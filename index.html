@@ -39,8 +39,37 @@
     <h1>Welcome to My Vinae Project!</h1>
     <p>This is my new website hosted on GitHub Pages.</p>
 
-    <button onclick="document.getElementById('output').innerText = 'server hari is started'">Click Me (Domain)</button>
+    <button id="startBtn">Click Me (Domain)</button>
     <p id="output"></p>
+
+    <script>
+        document.getElementById('startBtn').addEventListener('click', async () => {
+            // Show loading state
+            document.getElementById('output').innerText = 'Starting server...';
+            document.getElementById('output').style.color = '#555';
+            
+            const dbUrl = "https://welcome-wasp-78621.upstash.io/incr/server_starts";
+            const token = "gQAAAAAAATMdAAIncDE4ODY2YWM1YmMzYjg0ZWM3OWEwYzIyYzJjM2IwY2IxN3AxNzg2MjE";
+            
+            try {
+                // Send request to Upstash Redis DB
+                const response = await fetch(dbUrl, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                // Show success message with database counter
+                document.getElementById('output').style.color = 'green';
+                document.getElementById('output').innerText = `server hari is started! (Started ${data.result} times)`;
+                
+            } catch (err) {
+                console.error(err);
+                document.getElementById('output').style.color = 'red';
+                document.getElementById('output').innerText = "server hari is started (Warning: Database offline)";
+            }
+        });
+    </script>
 </body>
 
 </html>
