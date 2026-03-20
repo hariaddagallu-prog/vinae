@@ -207,13 +207,16 @@
             });
 
             try {
-                // LPUSH command adds this new item to a Redis List named 'users'
-                const data = await redisCommand(["LPUSH", "users", payload]);
+                // HSETNX sets the value only if the email key doesn't already exist
+                const data = await redisCommand(["HSETNX", "users_by_email", email, payload]);
                 
-                if(data.result !== undefined) {
+                if(data.result === 1) {
                     formOut.style.color = '#00f2fe';
                     formOut.innerText = "Successfully saved your data to Redis!";
                     document.getElementById('contactForm').reset(); // Clear the form
+                } else if(data.result === 0) {
+                    formOut.style.color = '#ffeb3b'; // Yellow warning text
+                    formOut.innerText = "Details already exist: This email is already registered!";
                 } else {
                     formOut.style.color = '#ff6b6b';
                     formOut.innerText = "Failed to save.";
