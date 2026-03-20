@@ -1,75 +1,232 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My GitHub Pages Site</title>
+    <title>Vinae Project</title>
+    <!-- Modern Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: sans-serif;
-            text-align: center;
-            margin-top: 50px;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); /* Sleek dark gradient */
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
-
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px); /* Glassmorphism effect */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            animation: fadeIn 0.8s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 5px;
+            background: -webkit-linear-gradient(#00f2fe, #4facfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p.subtitle {
+            font-size: 14px;
+            color: #ccc;
+            margin-bottom: 30px;
+        }
+        
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: #ccc;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            transition: border 0.3s, background 0.3s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #4facfe;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Buttons */
         button {
-            padding: 10px 20px;
+            width: 100%;
+            padding: 14px;
             font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
-            background-color: #0366d6;
+            background: linear-gradient(to right, #4facfe 0%, #00f2fe 100%);
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-
         button:hover {
-            background-color: #0056b3;
+            transform: translateY(-2px); /* Micro-animation on hover */
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
         }
-
-        #output {
-            margin-top: 20px;
-            font-size: 18px;
-            color: green;
-            font-weight: bold;
+        button:active {
+            transform: translateY(0);
+        }
+        button.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            margin-bottom: 10px;
+            color: #ccc;
+        }
+        button.secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: none;
+            color: #fff;
+        }
+        
+        /* Output texts */
+        #output, #formOutput {
+            margin-top: 15px;
+            font-size: 14px;
+            font-weight: 600;
+            min-height: 20px;
+        }
+        .divider {
+            margin: 30px 0;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
         }
     </style>
 </head>
-
 <body>
-    <h1>Welcome to My Vinae Project!</h1>
-    <p>This is my new website hosted on GitHub Pages.</p>
+    <div class="container">
+        <h1>Vinae Project</h1>
+        <p class="subtitle">Connected to Upstash Redis</p>
+        
+        <button class="secondary" id="startBtn">Ping Server Counter</button>
+        <p id="output"></p>
 
-    <button id="startBtn">Click Me (Domain)</button>
-    <p id="output"></p>
+        <div class="divider"></div>
+
+        <h2 style="font-size: 18px; margin-bottom: 20px; color: #fff;">Register User</h2>
+        
+        <!-- Registration Form -->
+        <form id="contactForm">
+            <div class="form-group">
+                <label for="name">Your Name</label>
+                <input type="text" id="name" placeholder="John Doe" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" placeholder="john@example.com" required>
+            </div>
+            <button type="submit" id="submitBtn">Save to Database</button>
+        </form>
+        <p id="formOutput"></p>
+    </div>
 
     <script>
+        const REDIS_URL = "https://welcome-wasp-78621.upstash.io";
+        const REDIS_TOKEN = "gQAAAAAAATMdAAIncDE4ODY2YWM1YmMzYjg0ZWM3OWEwYzIyYzJjM2IwY2IxN3AxNzg2MjE";
+
+        // Helper function that talks to the Upstash fully RESTful API
+        async function redisCommand(commandArray) {
+            const response = await fetch(REDIS_URL, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${REDIS_TOKEN}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(commandArray) // e.g. ["LPUSH", "users", "{...}"]
+            });
+            return await response.json();
+        }
+
+        // 1. Previous Server Ping Logic
         document.getElementById('startBtn').addEventListener('click', async () => {
-            // Show loading state
-            document.getElementById('output').innerText = 'Starting server...';
-            document.getElementById('output').style.color = '#555';
-            
-            const dbUrl = "https://welcome-wasp-78621.upstash.io/incr/server_starts";
-            const token = "gQAAAAAAATMdAAIncDE4ODY2YWM1YmMzYjg0ZWM3OWEwYzIyYzJjM2IwY2IxN3AxNzg2MjE";
+            const out = document.getElementById('output');
+            out.style.color = '#ccc';
+            out.innerText = 'Pinging database...';
             
             try {
-                // Send request to Upstash Redis DB
-                const response = await fetch(dbUrl, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                
-                const data = await response.json();
-                
-                // Show success message with database counter
-                document.getElementById('output').style.color = 'green';
-                document.getElementById('output').innerText = `server hari is started! (Started ${data.result} times)`;
-                
+                const data = await redisCommand(["INCR", "server_starts"]);
+                if(data.result) {
+                    out.style.color = '#00f2fe';
+                    out.innerText = `Server pinged! (Total clicks: ${data.result})`;
+                }
             } catch (err) {
-                console.error(err);
-                document.getElementById('output').style.color = 'red';
-                document.getElementById('output').innerText = "server hari is started (Warning: Database offline)";
+                out.style.color = '#ff6b6b';
+                out.innerText = "Error connecting to Redis.";
+            }
+        });
+
+        // 2. New Contact Form Logic
+        document.getElementById('contactForm').addEventListener('submit', async (e) => {
+            e.preventDefault(); // Prevent page reload
+            
+            // Get input values
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const submitBtn = document.getElementById('submitBtn');
+            const formOut = document.getElementById('formOutput');
+
+            // Show loading phase
+            submitBtn.innerText = "Saving to Server...";
+            submitBtn.style.opacity = "0.7";
+            formOut.innerText = "";
+
+            // Convert data to JSON string to store in Redis list
+            const payload = JSON.stringify({ 
+                name: name, 
+                email: email, 
+                timestamp: new Date().toISOString() 
+            });
+
+            try {
+                // LPUSH command adds this new item to a Redis List named 'users'
+                const data = await redisCommand(["LPUSH", "users", payload]);
+                
+                if(data.result !== undefined) {
+                    formOut.style.color = '#00f2fe';
+                    formOut.innerText = "Successfully saved your data to Redis!";
+                    document.getElementById('contactForm').reset(); // Clear the form
+                } else {
+                    formOut.style.color = '#ff6b6b';
+                    formOut.innerText = "Failed to save.";
+                }
+            } catch (err) {
+                formOut.style.color = '#ff6b6b';
+                formOut.innerText = "Database connection error.";
+            } finally {
+                // Reset button styles
+                submitBtn.innerText = "Save to Database";
+                submitBtn.style.opacity = "1";
             }
         });
     </script>
 </body>
-
 </html>
