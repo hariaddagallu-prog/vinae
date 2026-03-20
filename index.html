@@ -76,6 +76,40 @@
             border-color: #4facfe;
             background: rgba(0, 0, 0, 0.3);
         }
+
+        /* Verification Code Styles */
+        .captcha-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .captcha-code {
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+            color: #4facfe;
+            letter-spacing: 3px;
+            user-select: none;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 12px;
+            border-radius: 5px;
+        }
+        .captcha-input {
+            flex: 1;
+            padding: 10px !important;
+            margin-bottom: 0 !important;
+            border: none !important;
+            background: transparent !important;
+        }
+        .captcha-input:focus {
+            outline: none;
+        }
         
         /* Buttons */
         button {
@@ -144,6 +178,16 @@
                 <label for="email">Email Address</label>
                 <input type="email" id="email" placeholder="john@example.com" required>
             </div>
+
+            <!-- Security Verification Code -->
+            <div class="form-group">
+                <label>Security Verification</label>
+                <div class="captcha-box">
+                    <div class="captcha-code" id="captchaCode">XXXXX</div>
+                    <input type="text" id="captchaInput" class="captcha-input" placeholder="Type the code here..." required>
+                </div>
+            </div>
+
             <button type="submit" id="submitBtn">Save to Database</button>
         </form>
         <p id="formOutput"></p>
@@ -153,6 +197,20 @@
         const REDIS_URL = "https://welcome-wasp-78621.upstash.io";
         const REDIS_TOKEN = "gQAAAAAAATMdAAIncDE4ODY2YWM1YmMzYjg0ZWM3OWEwYzIyYzJjM2IwY2IxN3AxNzg2MjE";
 
+        // Verification Code (CAPTCHA) Generator
+        let currentCaptcha = "";
+        function generateCaptcha() {
+            const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Removed confusing characters like I, O, 0, 1
+            currentCaptcha = "";
+            for(let i = 0; i < 5; i++) {
+                currentCaptcha += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('captchaCode').innerText = currentCaptcha;
+        }
+        
+        // Generate a random code on page load
+        generateCaptcha();
+
         // Helper function that talks to the Upstash fully RESTful API
         async function redisCommand(commandArray) {
             const response = await fetch(REDIS_URL, {
@@ -161,12 +219,12 @@
                     "Authorization": `Bearer ${REDIS_TOKEN}`,
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(commandArray) // e.g. ["LPUSH", "users", "{...}"]
+                body: JSON.stringify(commandArray)
             });
             return await response.json();
         }
 
-        // 1. Previous Server Ping Logic
+        // 1. Server Ping Logic
         document.getElementById('startBtn').addEventListener('click', async () => {
             const out = document.getElementById('output');
             out.style.color = '#ccc';
@@ -184,20 +242,29 @@
             }
         });
 
-        // 2. New Contact Form Logic
+        // 2. New Contact Form Logic with Verification
         document.getElementById('contactForm').addEventListener('submit', async (e) => {
             e.preventDefault(); // Prevent page reload
             
-            // Get input values
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
+            const captchaInput = document.getElementById('captchaInput').value.trim().toUpperCase();
             const submitBtn = document.getElementById('submitBtn');
             const formOut = document.getElementById('formOutput');
 
+            // --- SECURITY CHECK (Verify Code) ---
+            if (captchaInput !== currentCaptcha) {
+                formOut.style.color = '#ffeb3b';
+                formOut.innerText = "Security code is incorrect. Please try again.";
+                generateCaptcha(); // Generate a new code for security
+                document.getElementById('captchaInput').value = '';
+                return;
+            }
+
             // Show loading phase
+            formOut.innerText = "";
             submitBtn.innerText = "Saving to Server...";
             submitBtn.style.opacity = "0.7";
-            formOut.innerText = "";
 
             // Convert data to JSON string to store in Redis list
             const payload = JSON.stringify({ 
@@ -214,9 +281,12 @@
                     formOut.style.color = '#00f2fe';
                     formOut.innerText = "Successfully saved your data to Redis!";
                     document.getElementById('contactForm').reset(); // Clear the form
+                    generateCaptcha(); // Generate new code for next user
                 } else if(data.result === 0) {
                     formOut.style.color = '#ffeb3b'; // Yellow warning text
                     formOut.innerText = "Details already exist: This email is already registered!";
+                    generateCaptcha(); // Generate new code
+                    document.getElementById('captchaInput').value = '';
                 } else {
                     formOut.style.color = '#ff6b6b';
                     formOut.innerText = "Failed to save.";
